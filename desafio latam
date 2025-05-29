@@ -1,0 +1,87 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Cargar datos
+df = pd.read_csv('telecom_customers.csv')
+
+# Vista rápida de los datos
+df.head()
+
+# Convertir valores 'No internet service' y 'No phone service' a 'No'
+cols_to_clean = [
+    'OnlineSecurity', 'OnlineBackup', 'DeviceProtection', 'TechSupport',
+    'StreamingTV', 'StreamingMovies', 'MultipleLines'
+]
+for col in cols_to_clean:
+    df[col] = df[col].replace({'No internet service': 'No', 'No phone service': 'No'})
+
+df['Charges.Total'] = pd.to_numeric(df['Charges.Total'], errors='coerce')
+
+print(df.isnull().sum())
+
+df.dropna(inplace=True)
+
+
+for col in df.select_dtypes(include='object').columns:
+    if col not in ['customerID']:
+        df[col] = df[col].astype('category')
+
+
+plt.figure(figsize=(6, 4))
+sns.countplot(data=df, x='Churn', palette='Set2')
+plt.title('Distribución de Churn')
+plt.show()
+
+plt.figure(figsize=(8, 5))
+sns.countplot(data=df, x='Contract', hue='Churn', palette='Set1')
+plt.title('Churn según tipo de contrato')
+plt.xticks(rotation=0)
+plt.show()
+
+plt.figure(figsize=(10, 6))
+sns.histplot(data=df, x='tenure', hue='Churn', bins=30, kde=True, palette='coolwarm')
+plt.title('Distribución de Tenure por Churn')
+plt.xlabel('Meses de contrato')
+plt.show()
+
+plt.figure(figsize=(10, 6))
+num_cols = ['tenure', 'Charges.Monthly', 'Charges.Total']
+corr = df[num_cols].corr()
+sns.heatmap(corr, annot=True, cmap='Blues')
+plt.title('Matriz de correlación')
+plt.show()
+
+churn_rate = df['Churn'].value_counts(normalize=True)['Yes'] * 100
+avg_monthly = df.groupby('Churn')['Charges.Monthly'].mean()
+avg_total = df.groupby('Churn')['Charges.Total'].mean()
+
+print(f"Tasa de abandono: {churn_rate:.2f}%")
+print("\nPromedio mensual por cliente:")
+print(avg_monthly)
+print("\nPromedio total gastado por cliente:")
+print(avg_total)
+
+
+# Boxplot de los pagos mensuales según si el cliente abandonó o no
+plt.figure(figsize=(8, 6))
+sns.boxplot(data=df, x='Churn', y='Charges.Monthly', palette='Pastel1')
+plt.title('Pagos mensuales según Churn')
+plt.xlabel('Churn')
+plt.ylabel('Charges.Monthly')
+plt.show()
+
+# Tabla cruzada: Tipo de contrato y abandono
+ct = pd.crosstab(df['Contract'], df['Churn'], margins=True, normalize='index')
+print(ct)
+
+# Visualización del crosstab anterior
+ct_plot = pd.crosstab(df['Contract'], df['Churn'], normalize='index')
+ct_plot.plot(kind='bar', stacked=True, colormap='Accent', figsize=(8, 5))
+plt.title('Proporción de Churn por tipo de contrato')
+plt.ylabel('Proporción')
+plt.xlabel('Tipo de contrato')
+plt.legend(title='Churn')
+plt.xticks(rotation=0)
+plt.show()
